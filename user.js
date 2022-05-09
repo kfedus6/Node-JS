@@ -1,6 +1,20 @@
 import express from "express";
 import mysql2 from "mysql2";
 
+function random(min, max) {
+   return min + Math.random() * (max - min);
+}
+
+const token = () => {
+   let token = '';
+   for (let i = 0; i < 16; i++) {
+      let value = random(48, 121)
+      if (value == 63) value = random(48, 121)
+      token += String.fromCharCode(value)
+   }
+   return token
+}
+
 const PORT = 3000;
 const IP = '127.0.0.1';
 
@@ -27,6 +41,17 @@ server.get('/api/users', (req, res) => {
    })
 });
 
+server.get('/api/posts', (req, res) => {
+   const sql = "SELECT * FROM post";
+   connection.query(sql, (error, result) => {
+      if (error) {
+         res.status(505).json({ 'status': 'error', 'message': 'error db' })
+      } else {
+         res.status(200).json({ 'status': 'ok', 'post': result })
+      }
+   })
+});
+
 server.get('/api/usernames', (req, res) => {
    const sql = "SELECT name FROM user";
    connection.query(sql, (error, result) => {
@@ -41,16 +66,17 @@ server.get('/api/usernames', (req, res) => {
 server.post('/api/adduser', (req, res) => {
    //1 - неверный токен
    //2 - недостаточно прав
-   const sqlToken = `SELECT admin FROM user WHERE token = "${req.body.token}"`;
+   const sqlToken = `SELECT admin FROM user WHERE token = "${req.body.user.token}"`;
    connection.query(sqlToken, (error, result) => {
-
       if (error) {
-         res.status(505).json({ 'status': 'error', 'message': 'error db' });
+         res.status(505).json({ 'status': 'error', 'message': 'error db1' });
          return false;
       } else if (result.length == false) {
          res.status(400).json({ 'status': 'error', 'message': 'uncorrect token' })
+      } else if (result[0].admin == false) {
+         res.status(400).json({ 'status': 'error', 'message': 'you are not admin' })
       } else if (result[0].admin == true) {
-         const sql = `INSERT INTO user(id,name,admin) VALUES(${req.body.id},"${req.body.name}",${req.body.admin})`;
+         const sql = `INSERT INTO user(id,name,admin,token) VALUES(${req.body.user.id},"${req.body.user.name}",${req.body.user.admin},"${token()}")`;
          connection.query(sql, (err, resl) => {
             if (err) {
                res.status(505).json({ 'status': 'error', 'message': 'error db' });
@@ -62,6 +88,28 @@ server.post('/api/adduser', (req, res) => {
       }
    })
 });
+
+server.post('/api/addpost', (req, res) => {
+   const sqlAdmin = `SELECT admin FROM user WHERE token ="${req.body.user.token}"`;
+   connection.query(sqlAdmin, (error, result) => {
+      if (error) {
+         res.status(505).json({ 'status': 'error', 'message': 'error db' })
+      } else if (result.length == false) {
+         res.status(400).json({ 'status': 'error', 'message': 'uncorrect token' })
+      } else if (result[0].admin == false) {
+         res.status(200).json({ 'status': 'error', 'message': 'you are not admin' })
+      } else if (result[0].admin == true) {
+         const sql = `INSERT INTO post VALUES("${req.body.post.title}",${req.body.post.id},"${req.body.post.text}" )`;
+         connection.query(sql, (error, result) => {
+            if (error) {
+               res.status(400).json({ 'status': 'error', 'message': 'error db' })
+            } else {
+               res.status(200).json({ 'status': 'ok', 'post': result })
+            }
+         })
+      }
+   })
+})
 
 connection.connect((err) => {
    if (err) {
