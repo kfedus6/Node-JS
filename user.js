@@ -30,7 +30,45 @@ const server = express();
 
 server.use(express.json());
 
+/*
+:id - req.params
+getusers?token=fsdjnf2j3en&age=12 - req.query
+{
+   json  -   req.body
+}
+ */
+
+//DELETE FROM namedb WHERE row = 'value'
+
+
+server.delete('/api/deleteuser', (req, res) => {
+   const sql = `DELETE FROM user WHERE name = "${req.query.name}"`;
+   connection.query(sql, (error, result) => {
+      if (error) {
+         res.status(505).json({ 'status': 'error', 'message': 'error db' })
+      } else if (result.affectedRows == 0) {
+         res.status(404).json({ 'status': 'error', 'message': 'not found user' })
+      } else {
+         res.status(200).json({ 'status': 'ok', 'user': result })
+      }
+   })
+})
+
+server.get('/api/users/:id/:title', (req, res) => {
+   console.log(req.params)
+   const sql = "SELECT * FROM user";
+   connection.query(sql, (error, result) => {
+      if (error) {
+         res.status(505).json({ 'status': 'error', 'message': 'error db' });
+      } else {
+         res.status(200).json({ 'status': 'Ok', 'user': result });
+      }
+   })
+});
+
 server.get('/api/users', (req, res) => {
+   //const { token, name, age } = req.query;
+   //console.log(token, name, age)
    const sql = "SELECT * FROM user";
    connection.query(sql, (error, result) => {
       if (error) {
@@ -70,6 +108,7 @@ server.post('/api/adduser', (req, res) => {
    connection.query(sqlToken, (error, result) => {
       if (error) {
          res.status(505).json({ 'status': 'error', 'message': 'error db1' });
+         console.log(error.text)
          return false;
       } else if (result.length == false) {
          res.status(400).json({ 'status': 'error', 'message': 'uncorrect token' })
@@ -108,6 +147,19 @@ server.post('/api/addpost', (req, res) => {
             }
          })
       }
+   })
+});
+
+server.post('/api/addposts', (req, res) => {
+   req.body['posts'].forEach(item => {
+      const sql = `INSERT INTO post VALUES("${item.title}, ${item.id}, "${item.text}")`;
+      connection.query(sql, (error, result) => {
+         if (error) {
+            res.status(400).json({ 'status': 'error', 'message': 'error db' })
+         } else {
+            res.status(200).json({ 'status': 'ok', 'post': result })
+         }
+      })
    })
 })
 
